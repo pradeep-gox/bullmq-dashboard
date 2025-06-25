@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 const QUEUE_REFRESH_INTERVAL =
   parseInt(process.env.QUEUE_REFRESH_INTERVAL) || 60000;
 const MAX_QUEUES = parseInt(process.env.MAX_QUEUES) || 100;
+const READ_ONLY = process.env.READ_ONLY !== "false"; // Default to true
 
 // Redis connection configuration
 const redisConfig = {
@@ -69,13 +70,13 @@ async function discoverQueues() {
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath("/admin/queues");
 
-// Configure read-only settings
+// Configure settings based on READ_ONLY
 const bullBoardConfig = {
   queues: [], // Will be populated dynamically
   serverAdapter: serverAdapter,
   options: {
     uiConfig: {
-      boardTitle: "BullMQ Dashboard (Read-Only)",
+      boardTitle: `BullMQ Dashboard${READ_ONLY ? " (Read-Only)" : ""}`,
       miscLinks: [],
       favIcon: {
         default: "static/images/logo.svg",
@@ -112,13 +113,15 @@ async function initializeQueues() {
         })
     );
 
-    // Create read-only adapters
+    // Create adapters, optionally read-only
     const queueAdapters = queues.map((queue) => {
       const adapter = new BullMQAdapter(queue);
-      // Make adapter read-only by overriding methods
-      adapter.clean = () => Promise.resolve();
-      adapter.retryJob = () => Promise.resolve();
-      adapter.promoteJob = () => Promise.resolve();
+      if (READ_ONLY) {
+        // Make adapter read-only by overriding methods
+        adapter.clean = () => Promise.resolve();
+        adapter.retryJob = () => Promise.resolve();
+        adapter.promoteJob = () => Promise.resolve();
+      }
       return adapter;
     });
 
@@ -135,10 +138,9 @@ async function initializeQueues() {
 // Store current queue names
 let currentQueues = [];
 
-// Middleware to make dashboard read-only
+// Middleware to make dashboard read-only (conditional)
 app.use("/admin/queues", (req, res, next) => {
-  // Block POST, PUT, DELETE requests to make it read-only
-  if (["POST", "PUT", "DELETE", "PATCH"].includes(req.method)) {
+  if (READ_ONLY && ["POST", "PUT", "DELETE", "PATCH"].includes(req.method)) {
     return res.status(403).json({
       error: "Dashboard is in read-only mode",
       message: "Modifications are not allowed",
@@ -153,11 +155,11 @@ app.use("/admin/queues", serverAdapter.getRouter());
 // Basic route
 app.get("/", (req, res) => {
   res.json({
-    message: "BullMQ Dashboard Server (Read-Only)",
+    message: `BullMQ Dashboard Server${READ_ONLY ? " (Read-Only)" : ""}`,
     dashboard: `http://localhost:${PORT}/admin/queues`,
     queues: currentQueues,
     totalQueues: currentQueues.length,
-    mode: "read-only",
+    mode: READ_ONLY ? "read-only" : "read-write",
     status: "running",
     config: {
       refreshInterval: QUEUE_REFRESH_INTERVAL,
@@ -165,6 +167,7 @@ app.get("/", (req, res) => {
       redisHost: process.env.REDIS_HOST || "localhost",
       redisPort: process.env.REDIS_PORT || 6379,
       redisDb: process.env.REDIS_DB || 0,
+      readOnly: READ_ONLY,
     },
   });
 });
@@ -196,8 +199,9 @@ app.get("/health", async (req, res) => {
       status: "healthy",
       redis: "connected",
       queues: currentQueues.length,
-      mode: "read-only",
+      mode: READ_ONLY ? "read-only" : "read-write",
       discoveredQueues: currentQueues,
+      readOnly: READ_ONLY,
     });
   } catch (error) {
     res.status(500).json({
@@ -267,7 +271,7 @@ async function startServer() {
   try {
     console.log("🔍 Discovering BullMQ queues...");
     console.log(
-      `⚙️  Configuration: MAX_QUEUES=${MAX_QUEUES}, REFRESH_INTERVAL=${QUEUE_REFRESH_INTERVAL}ms`
+      `⚙️  Configuration: MAX_QUEUES=${MAX_QUEUES}, REFRESH_INTERVAL=${QUEUE_REFRESH_INTERVAL}ms, READ_ONLY=${READ_ONLY}`
     );
 
     currentQueues = await initializeQueues();
@@ -277,7 +281,9 @@ async function startServer() {
 
     app.listen(PORT, () => {
       console.log(
-        `🚀 BullMQ Dashboard (Read-Only) running on http://localhost:${PORT}`
+        `🚀 BullMQ Dashboard${
+          READ_ONLY ? " (Read-Only)" : ""
+        } running on http://localhost:${PORT}`
       );
       console.log(
         `📊 Dashboard available at: http://localhost:${PORT}/admin/queues`
@@ -288,7 +294,11 @@ async function startServer() {
           ", "
         )}`
       );
-      console.log(`⚠️  Dashboard is in READ-ONLY mode`);
+      if (READ_ONLY) {
+        console.log(`⚠️  Dashboard is in READ-ONLY mode`);
+      } else {
+        console.log(`📝 Dashboard is in READ-WRITE mode`);
+      }
       console.log(`⏰ Auto-refresh enabled every ${QUEUE_REFRESH_INTERVAL}ms`);
     });
   } catch (error) {

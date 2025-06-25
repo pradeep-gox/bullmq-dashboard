@@ -4,7 +4,7 @@ A **read-only** web-based dashboard for monitoring BullMQ queues with **automati
 
 ## Features
 
-- 🔍 **Automatic Queue Discovery** - Finds all BullMQ queues automatically  
+- 🔍 **Automatic Queue Discovery** - Finds all BullMQ queues automatically
 - 📊 **Real-time Monitoring** - Live queue status and job updates
 - 🔒 **Read-Only Mode** - View-only access, no modifications allowed
 - 🔄 **Auto-Refresh** - Automatically discovers new queues every 30 seconds
@@ -21,12 +21,14 @@ A **read-only** web-based dashboard for monitoring BullMQ queues with **automati
 ## Installation
 
 1. **Create the project:**
+
    ```bash
    mkdir bullmq-dashboard
    cd bullmq-dashboard
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
@@ -40,6 +42,7 @@ A **read-only** web-based dashboard for monitoring BullMQ queues with **automati
 ## Usage
 
 1. **Start the dashboard:**
+
    ```bash
    npm start
    # or for development:
@@ -69,7 +72,7 @@ The `:meta` keys are the most reliable way to identify actual BullMQ queues sinc
 ### Read-Only Features
 
 - ❌ Cannot retry failed jobs
-- ❌ Cannot delete jobs or clean queues  
+- ❌ Cannot delete jobs or clean queues
 - ❌ Cannot pause/resume queues
 - ❌ Cannot modify job data
 - ✅ Can view all job details and logs
@@ -101,89 +104,21 @@ QUEUE_REFRESH_INTERVAL=30000
 MAX_QUEUES=100
 ```
 
+### READ_ONLY
+
+- **Description:** Controls whether the dashboard is in read-only mode (no destructive actions allowed).
+- **Type:** boolean ("true" or "false")
+- **Default:** `true`
+- **Usage:**
+  - Set `READ_ONLY=false` to allow write operations (dangerous in production).
+  - By default, or if set to any value other than "false", the dashboard is read-only.
+
+Example usage in `.env` file:
+
+```
+READ_ONLY=false
+```
+
 ## API Endpoints
 
-- `GET /` - Server info and discovered queues
-- `GET /health` - Health check with queue count
-- `GET /refresh` - Manually refresh queue discovery
-- `GET /admin/queues` - Bull Board dashboard (read-only)
-
-## Example Response
-
-```json
-{
-  "message": "BullMQ Dashboard Server (Read-Only)",
-  "dashboard": "http://localhost:3000/admin/queues",
-  "queues": ["emailQueue", "imageQueue", "webhookQueue"],
-  "totalQueues": 3,
-  "mode": "read-only",
-  "status": "running"
-}
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Cannot connect to Redis:**
-   - Verify Redis is running: `redis-cli ping`
-   - Check Redis configuration in `.env`
-
-2. **Queues not showing:**
-   - Ensure queue names match exactly with your BullMQ setup
-   - Verify Redis connection and database number
-
-3. **Jobs not appearing:**
-   - Make sure your application is using the same Redis instance
-   - Check that jobs are being added to the correct queue names
-
-### Debugging
-
-Enable debug logs:
-```bash
-DEBUG=bull-board:* npm start
-```
-
-## Production Deployment
-
-1. **Set environment variables:**
-   ```bash
-   NODE_ENV=production
-   PORT=3000
-   REDIS_HOST=your-production-redis-host
-   REDIS_PASSWORD=your-redis-password
-   ```
-
-2. **Security considerations:**
-   - Use authentication/authorization for the dashboard
-   - Restrict access to the `/admin/queues` route
-   - Use HTTPS in production
-
-3. **Process management:**
-   ```bash
-   # Using PM2
-   npm install -g pm2
-   pm2 start server.js --name bullmq-dashboard
-   ```
-
-## Customization
-
-You can customize the dashboard by:
-
-- Adding authentication middleware
-- Customizing the Bull Board UI theme
-- Adding additional monitoring endpoints
-- Integrating with logging systems
-
-## Dependencies
-
-- `@bull-board/api` - Core Bull Board functionality
-- `@bull-board/express` - Express.js adapter
-- `@bull-board/ui` - Web UI components
-- `bullmq` - BullMQ queue library
-- `express` - Web framework
-- `ioredis` - Redis client
-
-## License
-
-MIT
+- `GET /`
